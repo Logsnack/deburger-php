@@ -1,0 +1,16 @@
+{
+  "name": "logsnack/deburger-php",
+  "description": "Debug your variables directly in Logsnack",
+  "keywords": ["log", "logging", "logsnack"],
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Nicolas Duck",
+      "email": "snicolas.du@gmail.com"
+    }
+  ],
+  "autoload": {
+    "files": ["Deburger.php"]
+  }
+}
