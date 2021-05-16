@@ -4,6 +4,9 @@
   "keywords": ["log", "logging", "logsnack"],
   "type": "library",
   "license": "MIT",
+  "require": {
+    "ext-curl": "*"
+  },
   "authors": [
     {
       "name": "Nicolas Duck",
