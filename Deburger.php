@@ -5,17 +5,19 @@ class Deburger {
     const TYPE_OBJECT = 'object';
     private static  function parse($object, &$output = []){
         $orc = new ReflectionClass($object);
+        $output['_deburger'] = [
+            '_type' => $orc->getName(),
+            '_preview' => $orc->getShortName()
+        ];
+
         foreach($orc->getProperties(ReflectionProperty::IS_PRIVATE) as $property){
             self::parseProperty($output, $object, $property, '-');
         }
         foreach($orc->getProperties(ReflectionProperty::IS_PROTECTED) as $property){
-            self::parseProperty($output, $object, $property, '*');
+            self::parseProperty($output, $object, $property, '#');
         }
         foreach($orc->getProperties(ReflectionProperty::IS_PUBLIC) as $property){
-            self::parseProperty($output, $object, $property, '-');
-        }
-        foreach($orc->getProperties(ReflectionProperty::IS_STATIC) as $property){
-            self::parseProperty($output, $object, $property, '::');
+            self::parseProperty($output, $object, $property, '+');
         }
         return $output;
     }
@@ -47,12 +49,27 @@ class Deburger {
 
     }
 
+    /**
+     * @param $var
+     *
+     * @throws Throwable
+     */
     public static function dump($var){
         $ch = curl_init();
 
+        if(!$_ENV['DEBURGER_PROJECT_NAME']){
+            throw new \Exception('Missing env DEBURGER_PROJECT_NAME.');
+        }
+        $parameters = [
+            'url' => $_ENV['DEBURGER_URL'] ?? 'localhost:8090',
+            'project' => [
+                'name' => $_ENV['DEBURGER_PROJECT_NAME'],
+                'tab' => $_ENV['DEBURGER_PROJECT_TAB_NAME'] ?? 'deburger'
+            ]
+        ];
         try{
             // set url
-            curl_setopt($ch, CURLOPT_URL, "localhost:8090/api/log");
+            curl_setopt($ch, CURLOPT_URL, "{$parameters['url']}/api/log");
 
             curl_setopt($ch, CURLOPT_HTTPHEADER, array(
                 'Content-Type: application/JSON'
@@ -63,35 +80,11 @@ class Deburger {
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
                 'action' => 'log',
                 'data' => [(array)self::walk($var)],
+                'project'=> $parameters['project']['name'],
+                'name'=> $parameters['project']['tab'],
                 'group' => ['name' => 'debug']
             ]));
 
-            $output = curl_exec($ch);
-
-        }catch (\Throwable $th) {
-            throw $th;
-        } finally {
-            curl_close($ch);
-        }
-    }
-    public static function register(){
-        // create curl resource
-        $ch = curl_init();
-        try{
-
-            // set url
-            curl_setopt($ch, CURLOPT_URL, "localhost:8090/api/register");
-
-            curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-                'Content-Type: application/JSON'
-            ));
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-
-            curl_setopt($ch, CURLOPT_HEADER, 1);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['action' => 'register', 'project'=> 'a', 'name' => 'Deburger']));
-
-            // $output contains the output string
             $output = curl_exec($ch);
 
         }catch (\Throwable $th) {
