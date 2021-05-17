@@ -1,8 +1,9 @@
 {
   "name": "logsnack/deburger-php",
   "description": "Debug your variables directly in Logsnack",
-  "keywords": ["log", "logging", "logsnack"],
+  "keywords": ["log", "logging", "logsnack", "stable"],
   "type": "library",
+  "version": "1.0.0",
   "license": "MIT",
   "require": {
     "ext-curl": "*"
