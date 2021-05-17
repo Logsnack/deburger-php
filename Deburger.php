@@ -41,6 +41,10 @@ class Deburger {
         }
         if(is_array($var)){
             foreach ($var as $key => $value){
+                $output['_deburger'] = [
+                    '_type' => 'Array',
+                    '_preview' => 'Array'
+                ];
                 $output[$key] = self::walk($value);
             }
             return $output;
