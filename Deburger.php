@@ -1,56 +1,84 @@
 <?php
 
-class Deburger {
+
+class Deburger
+{
     const TYPE_ARRAY = 'array';
     const TYPE_OBJECT = 'object';
-    private static  function parse($object, &$output = []){
+
+    private static function parse($object, &$output = [], $depth)
+    {
+        $depth++;
         $orc = new ReflectionClass($object);
         $output['_deburger'] = [
-            '_type' => $orc->getName(),
+            '_type'    => $orc->getName(),
             '_preview' => $orc->getShortName()
         ];
+        if ($depth > 5)
+        {
+            return [
+                '_deburger' => $output['_deburger'],
+                '#deburger' => 'Max depth reached.',
 
-        foreach($orc->getProperties(ReflectionProperty::IS_PRIVATE) as $property){
-            self::parseProperty($output, $object, $property, '-');
+            ];
         }
-        foreach($orc->getProperties(ReflectionProperty::IS_PROTECTED) as $property){
-            self::parseProperty($output, $object, $property, '#');
+        foreach ($orc->getProperties(ReflectionProperty::IS_PRIVATE) as $property)
+        {
+            self::parseProperty($output, $depth, $object, $property, '-');
         }
-        foreach($orc->getProperties(ReflectionProperty::IS_PUBLIC) as $property){
-            self::parseProperty($output, $object, $property, '+');
+        foreach ($orc->getProperties(ReflectionProperty::IS_PROTECTED) as $property)
+        {
+            self::parseProperty($output, $depth, $object, $property, '#');
         }
+        foreach ($orc->getProperties(ReflectionProperty::IS_PUBLIC) as $property)
+        {
+            self::parseProperty($output,$depth, $object, $property, '+');
+        }
+
         return $output;
     }
-    private static function parseProperty(&$output, $object, $property, $prefix = ''){
+
+    private static function parseProperty(&$output, $depth, $object, $property, $prefix = '')
+    {
         $property->setAccessible(true);
         $value = $property->getValue($object);
-        $type = is_object($value) ? self::TYPE_OBJECT : get_debug_type($value);
-        switch($type){
+        $type = is_object($value)
+            ? self::TYPE_OBJECT
+            : get_debug_type($value);
+        switch ($type)
+        {
             case self::TYPE_OBJECT:
-                $output[$prefix.$property->getName()] = self::parse($property->getValue($object));
+                $_output = [];
+                $output[$prefix . $property->getName()] = self::parse($property->getValue($object),$_output , $depth);
                 break;
             default:
-                $output[$prefix.$property->getName()] = $property->getValue($object);
+                $output[$prefix . $property->getName()] = $property->getValue($object);
                 break;
         }
     }
-    private static function walk($var){
+
+    private static function walk($var, $depth = 0)
+    {
         $output = [];
-        if(is_object($var)){
-            return self::parse($var, $output);
+        if (is_object($var))
+        {
+            return self::parse($var, $output, $depth);
         }
-        if(is_array($var)){
-            foreach ($var as $key => $value){
+        if (is_array($var))
+        {
+            foreach ($var as $key => $value)
+            {
                 $output['_deburger'] = [
-                    '_type' => 'Array',
+                    '_type'    => 'Array',
                     '_preview' => 'Array'
                 ];
                 $output[$key] = self::walk($value);
             }
+
             return $output;
         }
-        return $var;
 
+        return $var;
     }
 
     /**
@@ -58,20 +86,23 @@ class Deburger {
      *
      * @throws Throwable
      */
-    public static function dump($var){
+    public static function dump($var)
+    {
         $ch = curl_init();
 
-        if(!$_ENV['DEBURGER_PROJECT_NAME']){
+        if (!$_ENV['DEBURGER_PROJECT_NAME'])
+        {
             throw new \Exception('Missing env DEBURGER_PROJECT_NAME.');
         }
         $parameters = [
-            'url' => $_ENV['DEBURGER_URL'] ?? 'localhost:8090',
+            'url'     => $_ENV['DEBURGER_URL'] ?? 'localhost:8090',
             'project' => [
                 'name' => $_ENV['DEBURGER_PROJECT_NAME'],
-                'tab' => $_ENV['DEBURGER_PROJECT_TAB_NAME'] ?? 'deburger'
+                'tab'  => $_ENV['DEBURGER_PROJECT_TAB_NAME'] ?? 'deburger'
             ]
         ];
-        try{
+        try
+        {
             // set url
             curl_setopt($ch, CURLOPT_URL, "{$parameters['url']}/api/log");
 
@@ -82,23 +113,28 @@ class Deburger {
             curl_setopt($ch, CURLOPT_HEADER, 1);
             curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
-                'action' => 'log',
-                'data' => [(array)self::walk($var)],
-                'project'=> $parameters['project']['name'],
-                'name'=> $parameters['project']['tab'],
-                'group' => ['name' => 'debug']
+                'action'  => 'log',
+                'data'    => [(array)self::walk($var)],
+                'project' => $parameters['project']['name'],
+                'name'    => $parameters['project']['tab'],
+                'group'   => ['name' => 'debug']
             ]));
 
             $output = curl_exec($ch);
-
-        }catch (\Throwable $th) {
+        }
+        catch (\Throwable $th)
+        {
             throw $th;
-        } finally {
+        }
+        finally
+        {
             curl_close($ch);
         }
     }
 }
 
-function deburger($var){
+
+function deburger($var)
+{
     Deburger::dump($var);
 }
